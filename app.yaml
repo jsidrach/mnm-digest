@@ -1,0 +1,10 @@
+application: meneame-diario
+runtime: go
+api_version: go1
+
+handlers:
+- url: /
+  script: _go_app
+
+- url: /rss
+  script: _go_app
