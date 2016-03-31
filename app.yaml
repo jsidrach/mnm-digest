@@ -1,4 +1,5 @@
 application: meneame-diario
+version: v1
 runtime: go
 api_version: go1
 

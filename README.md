@@ -22,8 +22,16 @@ Parameter | Description | Type | Default value
 Deployment in Google Cloud Platform
 -----------------------------------
 
+* Instal [Go App Engine](https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go)
 * Modify the application id setting the parameter ```application``` in ```app.yaml```.
-* Execute ```goapp deploy .``` inside the root directory.
+* Execute ```./appcfg.py -A <application_id> update .``` inside the root directory of the repository.
+
+Local Deployment
+----------------
+
+* Install [gcloud](https://cloud.google.com/sdk/#Quick_Start).
+* Modify the application id setting the parameter ```application``` in ```app.yaml```.
+* Execute ```goapp serve .``` inside the root directory of the repository.
 
 Algorithm
 ---------
@@ -37,3 +45,11 @@ License
 -------
 [MIT](LICENSE) - Feel free to use and edit.
 This project is not affiliated, connected or associated with the official Menéame project (https://github.com/gallir/Meneame).
+
+TODO
+----
+
+* Finish README.md
+* Optional logs
+* Better 404 handling
+* Start coding app
