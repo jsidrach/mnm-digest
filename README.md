@@ -50,16 +50,15 @@ In order to ensure that the new list of top stories is unique, a history of the 
 Since we don't want this stored list to grow indefinitely, we need to infer, given that a story was retrieved at the update ```Y1```, how many updates we need so that the probability of the story showing again at the update ```Y2 = Y1+#Updates``` is close to zero. This is achieved using the story property ```updates_to_flush```.
 
 A story has then the following properties:
-* **id**: unique identifier
-* **url**: permalink in menéame
+* **url**: permalink in menéame (used as idenfifier)
 * **title**: title
 * **updates_to_flush**: decreasing counter to know when to flush this story from storage
 
 So we store:
 * **last_digest**: date of the last digest
-* **page**: last generated HTML page
+* **page_html**: last generated HTML page
 * **page_rss**: last generated RSS page
-* **past_stories**: list of past stories, as described above
+* **past_stories**: past stories, as described above
 
 Finally, the algorithm pseudocode is:
 ```
@@ -72,9 +71,9 @@ New endpoint request
       Remove the stories that have updates_to_flush equal to zero from past_stories
       Trim the filtered list so it contains at maximum max_articles stories
       Store the trimmed list of new stories in past_stories
-      Generate page and page_rss using the trimmed list of new stories
+      Generate page_html and page_rss using the trimmed list of new stories
     Unlock
-  Serve page or page_rss, depending on the endpoint
+  Serve page_html or page_rss, depending on the endpoint
 ```
 
 License
@@ -85,6 +84,5 @@ This project is not affiliated, connected or associated to the official menéame
 TODO
 ----
 
-* Optional logs
 * Server implementation
 * Tests
