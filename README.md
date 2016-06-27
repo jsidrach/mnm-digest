@@ -50,7 +50,8 @@ In order to ensure that the new list of top stories is unique, a history of the 
 Since we don't want this stored list to grow indefinitely, we need to infer, given that a story was retrieved at the update ```Y1```, how many updates we need so that the probability of the story showing again at the update ```Y2 = Y1+#Updates``` is close to zero. This is achieved using the story property ```updates_to_flush```.
 
 A story has then the following properties:
-* **url**: permalink in menéame (used as idenfifier)
+* **id**: permalink in menéame (used as identifier)
+* **url**: permalink of the story itself
 * **title**: title
 * **updates_to_flush**: decreasing counter to know when to flush this story from storage
 
