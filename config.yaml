@@ -1,6 +1,6 @@
 # Menéame endpoint (string)
-meneame_url: "https://meneame.net"
+meneame_api: "https://meneame.net/api"
 # Refresh rate for the digest, in hours (uint)
 refresh_rate: 24
-# Maximum articles per digest (uint)
-max_articles: 10
+# Maximum stories per digest (uint)
+max_stories: 10

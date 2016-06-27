@@ -7,10 +7,13 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/urlfetch"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"net/http"
 	"path/filepath"
+  "net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -31,9 +34,9 @@ var refresh = &sync.Mutex{}
 
 // Configuration
 type ConfigType struct {
-	MeneameURL  string `yaml:"meneame_url"`
+	MeneameAPI  string `yaml:"meneame_api"`
 	RefreshRate uint   `yaml:"refresh_rate"`
-	MaxStories  uint   `yaml:"max_articles"`
+	MaxStories  uint   `yaml:"max_stories"`
 }
 
 // Type of output
@@ -114,7 +117,7 @@ func handleRequest(t outputType) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Determines if the digest needs to be refreshed or not
+// Determine if the digest needs to be refreshed or not
 func digestNeedsRefresh(c context.Context) bool {
 	// Check if there is an existing cached version, if not, return true create a new one
 	var s Digest
@@ -129,18 +132,18 @@ func digestNeedsRefresh(c context.Context) bool {
 func refreshDigest(c context.Context) {
 	// Need mutex so we don't refresh the digest concurrently
 	refresh.Lock()
+	defer refresh.Unlock()
 	// Check again since it could have been updated while locked
 	if digestNeedsRefresh(c) {
 		// Retrieve a *long enough* news list from menéame, sorted by karma
 		stories, err := getNewStories()
 		// External error, don't update the digest
 		if err {
-			refresh.Unlock()
 			return
 		}
 		// Filter out stories that have already appeared, and do not keep more than MaxStories
 		topStories := filterNewStories(c, stories)
-		// Updates/deletes past stories
+		// Update/delete past stories
 		updatePastStories(c)
 		// Store the unique list of new stories
 		storeStories(c, topStories)
@@ -150,16 +153,39 @@ func refreshDigest(c context.Context) {
 		s := Digest{html, rss, time.Now()}
 		storeDigest(c, &s)
 	}
-	refresh.Unlock()
 }
 
-// Fetches the new stories from menéame
+// Fetch the new stories from menéame
 func getNewStories() ([]Story, bool) {
+	var stories = make([]Story, 0, config.MaxStories)
+	var days int = 1 + (int(config.RefreshRate) / 24)
+	var rows int = (5 * int(config.MaxStories)) / 2
+	var qStories = config.MeneameAPI + "/rank?days=" + strconv.Itoa(days) + "&rows=" + strconv.Itoa(rows)
+	// Output format:
+	//  Each story one line
+	//  URL\tVotes\tNegatives\tKarma\n
+	/*
+	  fStories, err := http.Get(qStories)
+		if err != nil {
+	    return stories, true
+		}
+		defer fStories.Body.Close()
+		bStories, err := ioutil.ReadAll(fStories.Body)
+		if err != nil {
+	    return stories, true
+		}
+		sStories := strings.Split(string(bStories), "\n")
+		for _, sStory := range sStories {
+			storyFields := strings.Split(sStory, "\t")
+	    if len(storyFields) == 4 {
+	  		URL := storyFields[0]
+	  		story := Story{URL, URL, URL, 10}
+	  		stories = append(stories, story)
+	    }
+		}
+	*/
 	// TODO
-	// https://github.com/crodas/Meneame.net/blob/master/www/api/rank.php
-	// https://meneame.net/api/rank?rows=X&days=Y
 	// https://meneame.net/api/url?url=URL
-	var stories = make([]Story, 10)
 	return stories, false
 }
 
@@ -181,7 +207,7 @@ func filterNewStories(c context.Context, stories []Story) []Story {
 	return topStories
 }
 
-// Updates/deletes the past stories
+// Update/delete the past stories
 func updatePastStories(c context.Context) {
 	// Remove the stories whose UpdateToFlush is zero
 	// Decrease UpdatesToFlush for every story in past stories by one
@@ -205,7 +231,7 @@ func updatePastStories(c context.Context) {
 	}
 }
 
-// Stores the stories into the datastore
+// Store the stories into the datastore
 func storeStories(c context.Context, stories []Story) {
 	for _, story := range stories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
