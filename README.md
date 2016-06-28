@@ -15,7 +15,7 @@ The configuration options are stored in ```config.yaml```:
 Parameter | Description | Type | Default value
 --- | --- | --- | ---
 **meneame_url** | menéame endpoint | string | https://meneame.net
-**refresh_rate** | Refresh rate for the digest, in hours | uint | 24
+**refresh_rate** | Refresh rate for the digest, in days | uint | 1
 **max_articles** | Maximum articles per digest | uint | 10
 
 Deployment in Google Cloud Platform
@@ -35,8 +35,8 @@ Local Deployment
 Overview
 --------
 
-* **Problem**: if subscribed directly to menéame, there is no option to set the newsfeed to only update every X hours and only show the top Y stories over the these last X hours, reducing the overall noise and constant updates
-* **Proposed solution**: Menéame Digest retrieves the top X stories over the last Y hours and displays them, setting your own pace
+* **Problem**: if subscribed directly to menéame, there is no option to set the newsfeed to only update every X days and only show the top Y stories over the these last X days, reducing the overall noise and constant updates
+* **Proposed solution**: Menéame Digest retrieves the top X stories over the last Y days and displays them, setting your own pace
 * **Limitations**: pasts digests are not stored, only the most recent one is - use a newsfeed's service (like [Feedly](https://feedly.com)) to subscribe to this digest and store past feeds
 
 #### Algorithm
@@ -64,7 +64,7 @@ So we store:
 Finally, the algorithm pseudocode is:
 ```
 New endpoint request
-  If no lock and the time difference between last_digest and now is greater than refresh_date hours
+  If no lock and the time difference between last_digest and now is greater than refresh_date days
     Lock
       Retrieve a *long enough* news list from menéame, sorted by karma
       Filter out stories that are in the past_stories list
