@@ -14,6 +14,7 @@ import (
 	"math"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,7 +37,7 @@ var refresh = &sync.Mutex{}
 
 // Configuration
 type ConfigType struct {
-	MeneameAPI  string `yaml:"meneame_api"`
+	MeneameURL  string `yaml:"meneame_url"`
 	RefreshRate uint   `yaml:"refresh_rate"`
 	MaxStories  uint   `yaml:"max_stories"`
 }
@@ -54,8 +55,8 @@ const (
 
 // Stored pages and time they were generated
 type Digest struct {
-	HTML       string
-	RSS        string
+	HTML       string `datastore:",noindex"`
+	RSS        string `datastore:",noindex"`
 	LastDigest time.Time
 }
 
@@ -65,7 +66,11 @@ type Story struct {
 	URL            string
 	Title          string
 	UpdatesToFlush int
+	Karma          int `datastore:"-"`
 }
+
+// Stories type - implements the sort.Interface
+type Stories []Story
 
 // Access constants
 const (
@@ -160,14 +165,17 @@ func refreshDigest(c context.Context) {
 
 // Fetch the new stories from menéame
 func getNewStories(c context.Context) ([]Story, bool) {
-	var stories = make([]Story, 0, config.MaxStories)
-	var days int = 1 + int(config.RefreshRate)
-	var rows int = (5 * int(config.MaxStories)) / 2
-	var qStories = config.MeneameAPI + "/rank?days=" + strconv.Itoa(days) + "&rows=" + strconv.Itoa(rows)
+	var stories []Story
+	var seconds int = (12 + 24*int(config.RefreshRate)) * 60 * 60
+	var qStories = config.MeneameURL + "/rss?time=" + strconv.Itoa(seconds)
 	// Fetch stories
-	// Output format:
-	//  Each story one line
-	//  URL\tVotes\tNegatives\tKarma\n
+	// Output format: RSS
+	//   Stories enclosed between <item></item>
+	//     ID             <link>ID</link>
+	//     URL            <meneame:url>URL</meneame:url>
+	//     Title          <title>Title</title>
+	//     UpdatesToFlush int
+	//     Karma          <meneame:karma>Karma</meneame:karma>
 	client := urlfetch.Client(c)
 	fStories, err := client.Get(qStories)
 	if err != nil {
@@ -176,69 +184,26 @@ func getNewStories(c context.Context) ([]Story, bool) {
 	}
 	defer fStories.Body.Close()
 	bStories, err := ioutil.ReadAll(fStories.Body)
+	sStories := string(bStories)
 	if err != nil {
 		log.Println(err)
 		return stories, true
 	}
-	sStories := strings.Split(string(bStories), "\n")
-	for _, sStory := range sStories {
-		storyFields := strings.Split(sStory, "\t")
-		if len(storyFields) == 4 {
-			URL := storyFields[0]
-			story := Story{URL, URL, URL, days}
-			stories = append(stories, story)
-		} else {
-			log.Println("Fetched invalid story from Menéame API: [" + sStory + "]")
+	buffStories := strings.Split(sStories, "<item>")[1:]
+	for _, buffStory := range buffStories {
+		id := getTagContent(buffStory, "link")
+		url := getTagContent(buffStory, "meneame:url")
+		title := getTagContent(buffStory, "title")
+		karma, err := strconv.Atoi(getTagContent(buffStory, "meneame:karma"))
+		if err != nil {
+			continue
 		}
+		Story := Story{id, url, title, int(config.RefreshRate) + 2, karma}
+		stories = append(stories, Story)
 	}
-	log.Println("# of stories fetched from Menéame API: " + strconv.Itoa(len(stories)))
-	// Fetch menéame links
-	// Output format:
-	//  Each story one line
-	//  OK\tID\tVotes\Status\tMeneameID\n
-	sem := make(chan bool, len(stories))
-	storiesID := make([]Story, len(stories), len(stories))
-	copy(storiesID, stories)
-	for i, story := range stories {
-		go func(i int, chanStory Story) {
-			qStory := config.MeneameAPI + "/url?url=" + chanStory.URL
-			lStory, err := client.Get(qStory)
-			if err != nil {
-				sem <- false
-				log.Println(err)
-				return
-			}
-			defer lStory.Body.Close()
-			bStory, err := ioutil.ReadAll(lStory.Body)
-			if err != nil {
-				sem <- false
-				log.Println(err)
-				return
-			}
-			storyFields := strings.Split(string(bStory), " ")
-			if len(storyFields) != 5 {
-				sem <- false
-				log.Println("Fetched invalid story id from Menéame API: [" + string(bStory) + "]")
-				return
-			}
-			storiesID[i].ID = storyFields[1]
-			sem <- true
-		}(i, story)
-	}
-	// Wait for goroutines to finish
-	for i := 0; i < len(stories); i += 1 {
-		<-sem
-	}
-	log.Println("# of stories after fetching ids from Menéame API: " + strconv.Itoa(len(stories)))
-	// Build pseudotitle
-	storiesTitle := make([]Story, len(storiesID), len(storiesID))
-	copy(storiesTitle, storiesID)
-	for i, story := range storiesID {
-		idParts := strings.Split(story.ID, "/")
-		titleParts := strings.Split(idParts[len(idParts)-1], "-")
-		storiesTitle[i].Title = strings.Join(titleParts, " ") + "..."
-	}
-	return storiesTitle, len(storiesTitle) == 0
+	sort.Sort(Stories(stories))
+	log.Println("# of stories after fetching: " + strconv.Itoa(len(stories)))
+	return stories, len(stories) == 0
 }
 
 // Filters the new stories, keeping only the unique ones, and returning a maximum of MaxStories
@@ -320,3 +285,17 @@ func storeDigest(c context.Context, s *Digest) {
 		panic(err)
 	}
 }
+
+// Gets the content of a tag
+func getTagContent(buffer string, tag string) string {
+	initTag := "<" + tag + ">"
+	endTag := "</" + tag + ">"
+	initIndex := strings.Index(buffer, initTag) + len(initTag)
+	endIndex := strings.Index(buffer, endTag)
+	return buffer[initIndex:endIndex]
+}
+
+// Stories implementation of sort.Interface
+func (s Stories) Len() int           { return len(s) }
+func (s Stories) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Stories) Less(i, j int) bool { return s[i].Karma < s[j].Karma }
