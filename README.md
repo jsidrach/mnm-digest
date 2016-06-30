@@ -85,5 +85,5 @@ This project is not affiliated, connected or associated to the official menéame
 TODO
 ----
 
-* Server implementation
+* Template implementation
 * Tests

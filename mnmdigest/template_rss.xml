@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" 
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+>
+  <channel>
+    <title>Menéame Digest</title>
+    <atom:link href="{{.ServerURL}}/rss" rel="self" type="application/rss+xml" />
+    <link>{{.MeneameURL}}</link>
+    <description>Digest of the most popular menéame news</description>
+    <pubDate>{{.Date}}</pubDate>
+    <language>es</language>
+    {{range .Stories}}
+      <item>
+        <guid>{{.ID | html}}</guid>
+        <link>{{.ID | html}}</link>
+        <direct>{{.URL | html}}</direct>
+        <title>{{.Title | html}}</title>
+      </item>
+    {{end}}
+  </channel>
+</rss>

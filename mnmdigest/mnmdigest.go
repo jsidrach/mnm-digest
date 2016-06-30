@@ -13,7 +13,8 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"path/filepath"
+	"path"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -87,10 +88,8 @@ const (
 // Initialize global variables and handlers
 func init() {
 	// Global variables
-	filename, err := filepath.Abs("./config.yaml")
-	if err != nil {
-		panic(err)
-	}
+	_, thisFile, _, _ := runtime.Caller(1)
+	filename := path.Join(path.Dir(thisFile), CONFIG_FILE)
 	yamlFile, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
@@ -184,11 +183,11 @@ func getNewStories(c context.Context) ([]Story, bool) {
 	}
 	defer fStories.Body.Close()
 	bStories, err := ioutil.ReadAll(fStories.Body)
-	sStories := string(bStories)
 	if err != nil {
 		log.Println(err)
 		return stories, true
 	}
+	sStories := string(bStories)
 	buffStories := strings.Split(sStories, "<item>")[1:]
 	for _, buffStory := range buffStories {
 		id := getTagContent(buffStory, "link")
@@ -206,7 +205,7 @@ func getNewStories(c context.Context) ([]Story, bool) {
 	return stories, len(stories) == 0
 }
 
-// Filters the new stories, keeping only the unique ones, and returning a maximum of MaxStories
+// Filter the new stories, keeping only the unique ones, and returning a maximum of MaxStories
 func filterNewStories(c context.Context, stories []Story) []Story {
 	var topStories = make([]Story, 0, config.MaxStories)
 	for _, story := range stories {
@@ -286,7 +285,7 @@ func storeDigest(c context.Context, s *Digest) {
 	}
 }
 
-// Gets the content of a tag
+// Get the content of a tag
 func getTagContent(buffer string, tag string) string {
 	initTag := "<" + tag + ">"
 	endTag := "</" + tag + ">"
