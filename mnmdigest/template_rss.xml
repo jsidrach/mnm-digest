@@ -7,7 +7,7 @@
   <channel>
     <title>Menéame Digest</title>
     <atom:link href="{{.ServerURL}}/rss" rel="self" type="application/rss+xml" />
-    <link>{{.MeneameURL}}</link>
+    <link>{{.ServerURL}}/rss</link>
     <description>Digest of the most popular menéame news</description>
     <pubDate>{{.Date}}</pubDate>
     <language>es</language>

@@ -10,7 +10,7 @@ Endpoints
 Configuration
 -------------
 
-The configuration options are stored in ```config.yaml```:
+The configuration options are stored in ```mnmdigest/config.yaml```:
 
 Parameter | Description | Type | Default value
 --- | --- | --- | ---
