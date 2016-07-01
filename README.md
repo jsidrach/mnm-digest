@@ -12,11 +12,12 @@ Configuration
 
 The configuration options are stored in ```mnmdigest/config.yaml```:
 
-Parameter | Description | Type | Default value
---- | --- | --- | ---
-**meneame_url** | menéame endpoint | string | https://meneame.net
-**refresh_rate** | Refresh rate for the digest, in days | uint | 1
-**max_articles** | Maximum articles per digest | uint | 10
+Parameter        | Description                          | Type   | Default value
+---              | ---                                  | ---    | ---
+**server_url**   | server endpoint                      | string | https://meneame-diario.appspot.com
+**meneame_url**  | menéame endpoint                     | string | https://meneame.net
+**refresh_rate** | Refresh rate for the digest, in days | uint   | 1
+**max_articles** | Maximum articles per digest          | uint   | 10
 
 Deployment in Google Cloud Platform
 -----------------------------------

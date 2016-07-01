@@ -3,6 +3,7 @@ package mnmdigest
 
 // Dependencies
 import (
+	"bytes"
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/appengine"
@@ -19,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 )
 
@@ -38,9 +40,11 @@ var refresh = &sync.Mutex{}
 
 // Configuration
 type ConfigType struct {
+	ServerURL   string `yaml:"server_url"`
 	MeneameURL  string `yaml:"meneame_url"`
 	RefreshRate uint   `yaml:"refresh_rate"`
 	MaxStories  uint   `yaml:"max_stories"`
+	Dir         string
 }
 
 // Type of output
@@ -75,10 +79,13 @@ type Stories []Story
 
 // Access constants
 const (
-	CONFIG_FILE string = "./config.yaml"
-	FIXED_KEYS  string = "FixedKeys"
-	DIGEST_KEY  string = "Digest"
-	STORY_KIND  string = "Story"
+	CONFIG_FILE    string = "./config.yaml"
+	FIXED_KEYS     string = "FixedKeys"
+	DIGEST_KEY     string = "Digest"
+	STORY_KIND     string = "Story"
+	TEMPLATE_RSS   string = "template.rss"
+	TEMPLATE_HTML  string = "template.html"
+	TEMPLATE_INNER string = "template_inner.html"
 )
 
 //
@@ -89,7 +96,8 @@ const (
 func init() {
 	// Global variables
 	_, thisFile, _, _ := runtime.Caller(1)
-	filename := path.Join(path.Dir(thisFile), CONFIG_FILE)
+	thisDir := path.Dir(thisFile)
+	filename := path.Join(thisDir, CONFIG_FILE)
 	yamlFile, err := ioutil.ReadFile(filename)
 	if err != nil {
 		panic(err)
@@ -97,6 +105,7 @@ func init() {
 	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
 		panic(err)
 	}
+	config.Dir = thisDir
 	// Handlers
 	http.HandleFunc("/", handleRequest(HTML))
 	http.HandleFunc("/rss", handleRequest(RSS))
@@ -116,8 +125,10 @@ func handleRequest(t outputType) func(w http.ResponseWriter, r *http.Request) {
 		getDigest(c, &s)
 		switch t {
 		case RSS:
+			w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
 			fmt.Fprintf(w, s.RSS)
 		default:
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			fmt.Fprintf(w, s.HTML)
 		}
 	}
@@ -261,13 +272,67 @@ func storeStories(c context.Context, stories []Story) {
 
 // Generate the pages
 func generatePages(stories []Story) (string, string) {
-	/*
-	   var tmp bytes.Buffer
-	   t.Execute(&doc, template)
-	   s := tmp.String()
-	*/
-	// TODO
-	return "HTML", "RSS"
+	// Common inner part
+	timeNow := time.Now()
+	date := timeNow.Format(time.RFC822)
+	shortDate := timeNow.Format("2006-01-02")
+	tInner := template.New("template_inner.html")
+	templateInner, err := tInner.ParseFiles(path.Join(config.Dir, TEMPLATE_INNER))
+	if err != nil {
+		panic(err)
+	}
+	var innerBuffer bytes.Buffer
+	err = templateInner.Execute(&innerBuffer, stories)
+	if err != nil {
+		panic(err)
+	}
+	innerHTML := innerBuffer.String()
+
+	// HTML
+	dataHTML := struct {
+		ShortDate string
+		InnerHTML string
+	}{
+		shortDate,
+		innerHTML,
+	}
+	tHTML := template.New("template.html")
+	templateHTML, err := tHTML.ParseFiles(path.Join(config.Dir, TEMPLATE_HTML))
+	if err != nil {
+		panic(err)
+	}
+	var htmlBuffer bytes.Buffer
+	err = templateHTML.Execute(&htmlBuffer, dataHTML)
+	if err != nil {
+		panic(err)
+	}
+	html := htmlBuffer.String()
+
+	// RSS
+	dataRSS := struct {
+		ServerURL string
+		Date      string
+		ShortDate string
+		InnerHTML string
+	}{
+		config.ServerURL,
+		date,
+		shortDate,
+		innerHTML,
+	}
+	tRSS := template.New("template.rss")
+	templateRSS, err := tRSS.ParseFiles(path.Join(config.Dir, TEMPLATE_RSS))
+	if err != nil {
+		panic(err)
+	}
+	var rssBuffer bytes.Buffer
+	err = templateRSS.Execute(&rssBuffer, dataRSS)
+	if err != nil {
+		panic(err)
+	}
+	rss := rssBuffer.String()
+
+	return html, rss
 }
 
 // Get the digest

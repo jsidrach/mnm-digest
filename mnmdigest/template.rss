@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Menéame Digest</title>
+    <link>{{.ServerURL}}/rss</link>
+    <description>Digest of the most popular menéame news</description>
+    <pubDate>{{.Date}}</pubDate>
+    <language>es</language>
+    <item>
+      <title>Menéame Digest - {{.ShortDate}}</title>
+      <guid isPermaLink="false">mnm-digest-{{.ShortDate}}</guid>
+      <link>{{.ServerURL}}/rss</link>
+      <pubDate>{{.Date}}</pubDate>
+      <description><![CDATA[{{.InnerHTML}}]]></description>
+    </item>
+  </channel>
+</rss>

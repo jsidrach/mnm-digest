@@ -1,0 +1,15 @@
+<p>
+  <ul>
+  {{range .}}
+    <li>
+      <span>
+        <a href="{{.ID}}">{{.Title}}</a>
+      </span>
+      <br>
+      <span>
+        <a href="{{.URL}}">(enlace directo)</a>
+      </span>
+    </li>
+  {{end}}
+  </ul>
+</p>
