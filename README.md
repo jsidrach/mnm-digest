@@ -86,5 +86,4 @@ This project is not affiliated, connected or associated to the official menéame
 TODO
 ----
 
-* Template implementation
-* Tests
+* Datastore Tests
