@@ -45,6 +45,7 @@ type ConfigType struct {
 	RefreshRate uint   `yaml:"refresh_rate"`
 	MaxStories  uint   `yaml:"max_stories"`
 	Dir         string
+	Debug       bool
 }
 
 // Type of output
@@ -106,6 +107,7 @@ func init() {
 		panic(err)
 	}
 	config.Dir = thisDir
+	config.Debug = true
 	// Handlers
 	http.HandleFunc("/", handleRequest(HTML))
 	http.HandleFunc("/rss", handleRequest(RSS))
@@ -138,8 +140,7 @@ func handleRequest(t outputType) func(w http.ResponseWriter, r *http.Request) {
 func digestNeedsRefresh(c context.Context) bool {
 	// Check if there is an existing cached version, if not, return true create a new one
 	var s Digest
-	err := getDigest(c, &s)
-	if err != nil {
+	if getDigest(c, &s) != nil {
 		return true
 	}
 	return uint(math.Floor(time.Now().Sub(s.LastDigest).Hours()/24)) >= config.RefreshRate
@@ -156,7 +157,9 @@ func refreshDigest(c context.Context) {
 		stories, err := getNewStories(c)
 		// External error, don't update the digest
 		if err {
-			log.Println("Error while getting new stories")
+			if config.Debug {
+				log.Println("Error while getting new stories")
+			}
 			return
 		}
 		// Filter out stories that have already appeared, and do not keep more than MaxStories
@@ -189,13 +192,17 @@ func getNewStories(c context.Context) ([]Story, bool) {
 	client := urlfetch.Client(c)
 	fStories, err := client.Get(qStories)
 	if err != nil {
-		log.Println(err)
+		if config.Debug {
+			log.Println(err)
+		}
 		return stories, true
 	}
 	defer fStories.Body.Close()
 	bStories, err := ioutil.ReadAll(fStories.Body)
 	if err != nil {
-		log.Println(err)
+		if config.Debug {
+			log.Println(err)
+		}
 		return stories, true
 	}
 	sStories := string(bStories)
@@ -211,19 +218,21 @@ func getNewStories(c context.Context) ([]Story, bool) {
 		Story := Story{id, url, title, int(config.RefreshRate) + 2, karma}
 		stories = append(stories, Story)
 	}
-	sort.Sort(Stories(stories))
-	log.Println("# of stories after fetching: " + strconv.Itoa(len(stories)))
+	sort.Sort(sort.Reverse(Stories(stories)))
+	if config.Debug {
+		log.Println("# of stories after fetching: " + strconv.Itoa(len(stories)))
+	}
 	return stories, len(stories) == 0
 }
 
 // Filter the new stories, keeping only the unique ones, and returning a maximum of MaxStories
+// Stories must be in descent order
 func filterNewStories(c context.Context, stories []Story) []Story {
 	var topStories = make([]Story, 0, config.MaxStories)
 	for _, story := range stories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
 		// If story does not exists yet, add it to the unique stories
-		err := datastore.Get(c, k, &story)
-		if err != nil {
+		if datastore.Get(c, k, &story) != nil {
 			topStories = append(topStories, story)
 		}
 		// Stop if we have enough stories
@@ -231,7 +240,10 @@ func filterNewStories(c context.Context, stories []Story) []Story {
 			break
 		}
 	}
-	log.Println("# of stories remaining after filter: " + strconv.Itoa(len(topStories)))
+
+	if config.Debug {
+		log.Println("# of stories remaining after filter: " + strconv.Itoa(len(topStories)))
+	}
 	return topStories
 }
 
@@ -239,20 +251,17 @@ func filterNewStories(c context.Context, stories []Story) []Story {
 func updatePastStories(c context.Context) {
 	// Remove the stories whose UpdateToFlush is zero
 	// Decrease UpdatesToFlush for every story in past stories by one
-	q := datastore.NewQuery(STORY_KIND)
 	var pastStories []Story
-	_, err := q.GetAll(c, &pastStories)
-	if err != nil {
+	if _, err := datastore.NewQuery(STORY_KIND).GetAll(c, &pastStories); err != nil {
 		panic(err)
 	}
 	for _, story := range pastStories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
-		if story.UpdatesToFlush == 0 {
+		if story.UpdatesToFlush <= 0 {
 			datastore.Delete(c, k)
 		} else {
 			story.UpdatesToFlush -= 1
-			_, err := datastore.Put(c, k, &story)
-			if err != nil {
+			if _, err := datastore.Put(c, k, &story); err != nil {
 				panic(err)
 			}
 		}
@@ -263,8 +272,7 @@ func updatePastStories(c context.Context) {
 func storeStories(c context.Context, stories []Story) {
 	for _, story := range stories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
-		_, err := datastore.Put(c, k, &story)
-		if err != nil {
+		if _, err := datastore.Put(c, k, &story); err != nil {
 			panic(err)
 		}
 	}
@@ -282,8 +290,7 @@ func generatePages(stories []Story) (string, string) {
 		panic(err)
 	}
 	var innerBuffer bytes.Buffer
-	err = templateInner.Execute(&innerBuffer, stories)
-	if err != nil {
+	if err := templateInner.Execute(&innerBuffer, stories); err != nil {
 		panic(err)
 	}
 	innerHTML := innerBuffer.String()
@@ -302,8 +309,7 @@ func generatePages(stories []Story) (string, string) {
 		panic(err)
 	}
 	var htmlBuffer bytes.Buffer
-	err = templateHTML.Execute(&htmlBuffer, dataHTML)
-	if err != nil {
+	if err := templateHTML.Execute(&htmlBuffer, dataHTML); err != nil {
 		panic(err)
 	}
 	html := htmlBuffer.String()
@@ -326,8 +332,7 @@ func generatePages(stories []Story) (string, string) {
 		panic(err)
 	}
 	var rssBuffer bytes.Buffer
-	err = templateRSS.Execute(&rssBuffer, dataRSS)
-	if err != nil {
+	if err := templateRSS.Execute(&rssBuffer, dataRSS); err != nil {
 		panic(err)
 	}
 	rss := rssBuffer.String()
@@ -344,8 +349,7 @@ func getDigest(c context.Context, s *Digest) error {
 // Store the digest
 func storeDigest(c context.Context, s *Digest) {
 	k := datastore.NewKey(c, FIXED_KEYS, DIGEST_KEY, 0, nil)
-	_, err := datastore.Put(c, k, s)
-	if err != nil {
+	if _, err := datastore.Put(c, k, s); err != nil {
 		panic(err)
 	}
 }

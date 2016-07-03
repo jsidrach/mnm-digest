@@ -82,8 +82,3 @@ License
 -------
 [MIT](LICENSE) - Feel free to use and edit.
 This project is not affiliated, connected or associated to the official menéame project ([github.com/gallir/Meneame](https://github.com/gallir/Meneame)).
-
-TODO
-----
-
-* Datastore Tests
