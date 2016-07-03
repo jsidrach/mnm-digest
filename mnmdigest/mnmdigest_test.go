@@ -42,7 +42,7 @@ func TestHandleRequest(t *testing.T) {
 	defer clearDatastore()
 	inst, err := aetest.NewInstance(nil)
 	if err != nil {
-		t.Fatal("Can't create instance")
+		t.Fatal("Instance should be able to be created")
 	}
 	defer inst.Close()
 	// RSS request
@@ -229,7 +229,7 @@ func TestStoreAndGetDigest(t *testing.T) {
 	storeDigest(ctx, &digest)
 	var testDigest Digest
 	if getDigest(ctx, &testDigest) != nil {
-		t.Fatal()
+		t.Error("Digest should be stored be able to be retrieved after its storage")
 	}
 	// Cannot test property time - datastore changes its accuracy when storing it
 	if digest.HTML != testDigest.HTML ||
