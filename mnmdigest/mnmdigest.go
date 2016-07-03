@@ -220,7 +220,7 @@ func getNewStories(c context.Context) ([]Story, bool) {
 	}
 	sort.Sort(sort.Reverse(Stories(stories)))
 	if config.Debug {
-		log.Println("# of stories after fetching: " + strconv.Itoa(len(stories)))
+		log.Printf("# of stories after fetching: %v\n", len(stories))
 	}
 	return stories, len(stories) == 0
 }
@@ -242,7 +242,7 @@ func filterNewStories(c context.Context, stories []Story) []Story {
 	}
 
 	if config.Debug {
-		log.Println("# of stories remaining after filter: " + strconv.Itoa(len(topStories)))
+		log.Printf("# of stories remaining after filter: %v\n", len(topStories))
 	}
 	return topStories
 }

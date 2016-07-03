@@ -7,7 +7,6 @@ import (
 	"google.golang.org/appengine/datastore"
 	"net/http/httptest"
 	"reflect"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +32,7 @@ func init() {
 func TestInit(t *testing.T) {
 	defer clearDatastore()
 	if config.Dir == "" {
-		t.Error("The current directory should be set")
+		t.Errorf("The current directory should be set")
 	}
 }
 
@@ -53,7 +52,7 @@ func TestHandleRequest(t *testing.T) {
 	wRSS := httptest.NewRecorder()
 	handleRequest(RSS)(wRSS, reqRSS)
 	if wRSS.Code != 200 {
-		t.Error("/rss should return HTTP Code 200")
+		t.Errorf("/rss should return HTTP Code 200")
 	}
 	// HTML request
 	reqHTML, err := inst.NewRequest("GET", "/", nil)
@@ -63,7 +62,7 @@ func TestHandleRequest(t *testing.T) {
 	wHTML := httptest.NewRecorder()
 	handleRequest(HTML)(wHTML, reqHTML)
 	if wHTML.Code != 200 {
-		t.Error("/ should return HTTP Code 200")
+		t.Errorf("/ should return HTTP Code 200")
 	}
 }
 
@@ -72,11 +71,11 @@ func TestDigestNeedsRefresh(t *testing.T) {
 	defer clearDatastore()
 	config.RefreshRate = 1
 	if !digestNeedsRefresh(ctx) {
-		t.Error("Digest should need refresh initially")
+		t.Errorf("Digest should need refresh initially")
 	}
 	refreshDigest(ctx)
 	if digestNeedsRefresh(ctx) {
-		t.Error("Digest should not need refresh after being refreshed")
+		t.Errorf("Digest should not need refresh after being refreshed")
 	}
 }
 
@@ -86,11 +85,11 @@ func TestRefreshDigest(t *testing.T) {
 	config.RefreshRate = 1
 	refreshDigest(ctx)
 	if digestNeedsRefresh(ctx) {
-		t.Error("Digest should not need refresh after being refreshed")
+		t.Errorf("Digest should not need refresh after being refreshed")
 	}
 	config.RefreshRate = 0
 	if !digestNeedsRefresh(ctx) {
-		t.Error("Digest should always need refresh if refresh rate is set to zero")
+		t.Errorf("Digest should always need refresh if refresh rate is set to zero")
 	}
 }
 
@@ -101,11 +100,11 @@ func TestGetNewStories(t *testing.T) {
 	stories, err := getNewStories(ctx)
 	storiesLen := len(stories)
 	if err || storiesLen == 0 {
-		t.Error("Number of fetches stories should be more than one")
+		t.Errorf("Number of fetches stories should be more than one")
 	}
 	for i := 1; i < storiesLen; i++ {
 		if stories[i].Karma > stories[i-1].Karma {
-			t.Error("Story #" + strconv.Itoa(i) + " should not have higher karma than Story #" + strconv.Itoa(i-1))
+			t.Errorf("Story #%v should not have higher karma than Story #%v", i, i-1)
 		}
 	}
 }
@@ -124,11 +123,11 @@ func TestFilterNewStories(t *testing.T) {
 	testStories := filterNewStories(ctx, stories)
 	testStoriesLen := len(testStories)
 	if testStoriesLen != int(config.MaxStories) {
-		t.Error("Number of filtered stories remaining should be " + strconv.Itoa(int(config.MaxStories)) + " not " + strconv.Itoa(testStoriesLen))
+		t.Errorf("Number of filtered stories remaining should be %v not %v", config.MaxStories, testStoriesLen)
 	}
 	for i := range testStories {
 		if !reflect.DeepEqual(testStories[i], stories[i+1]) {
-			t.Error("Original Story #" + strconv.Itoa(i+1) + " shold be equal to filtered Story #" + strconv.Itoa(i))
+			t.Errorf("Original Story #%v shold be equal to filtered Story #%v", i+1, i)
 		}
 	}
 }
@@ -157,7 +156,7 @@ func TestUpdatePastStories(t *testing.T) {
 	testStoriesLen := len(testStories)
 	remainingStoriesLen := 2
 	if testStoriesLen != remainingStoriesLen {
-		t.Error("Number of stored stories remaining should be " + strconv.Itoa(remainingStoriesLen) + " not " + strconv.Itoa(testStoriesLen))
+		t.Errorf("Number of stored stories remaining should be %v not %v", remainingStoriesLen, testStoriesLen)
 	}
 }
 
@@ -182,11 +181,11 @@ func TestStoreStories(t *testing.T) {
 	testStoriesLen := len(testStories)
 	storiesLen := len(stories)
 	if testStoriesLen != storiesLen {
-		t.Error("Number of stored stories should be " + strconv.Itoa(storiesLen) + " not " + strconv.Itoa(testStoriesLen))
+		t.Errorf("Number of stored stories should be %v not %v", storiesLen, testStoriesLen)
 	}
 	for i, testStory := range testStories {
 		if !reflect.DeepEqual(stories[i], testStory) {
-			t.Error("Story #" + strconv.Itoa(i) + " should be equal before and after its storage")
+			t.Errorf("Story #%v should be equal before and after its storage", i)
 		}
 	}
 }
@@ -202,22 +201,22 @@ func TestGeneratePages(t *testing.T) {
 	html, rss := generatePages(stories)
 	for i, story := range stories {
 		if !strings.Contains(html, story.ID) {
-			t.Error("Generated HTML should contain Story #" + strconv.Itoa(i) + " ID")
+			t.Errorf("Generated HTML should contain Story #%v ID", i)
 		}
 		if !strings.Contains(rss, story.ID) {
-			t.Error("Generated RSS should contain Story #" + strconv.Itoa(i) + " ID")
+			t.Errorf("Generated RSS should contain Story #%v ID", i)
 		}
 		if !strings.Contains(html, story.URL) {
-			t.Error("Generated HTML should contain Story #" + strconv.Itoa(i) + " URL")
+			t.Errorf("Generated HTML should contain Story #%v URL", i)
 		}
 		if !strings.Contains(rss, story.URL) {
-			t.Error("Generated RSS should contain Story #" + strconv.Itoa(i) + " URL")
+			t.Errorf("Generated RSS should contain Story #%v URL", i)
 		}
 		if !strings.Contains(html, story.Title) {
-			t.Error("Generated HTML should contain Story #" + strconv.Itoa(i) + " Title")
+			t.Errorf("Generated HTML should contain Story #%v Title", i)
 		}
 		if !strings.Contains(rss, story.Title) {
-			t.Error("Generated RSS should contain Story #" + strconv.Itoa(i) + " Title")
+			t.Errorf("Generated RSS should contain Story #%v Title", i)
 		}
 	}
 }
@@ -229,12 +228,12 @@ func TestStoreAndGetDigest(t *testing.T) {
 	storeDigest(ctx, &digest)
 	var testDigest Digest
 	if getDigest(ctx, &testDigest) != nil {
-		t.Error("Digest should be stored be able to be retrieved after its storage")
+		t.Errorf("Digest should be stored be able to be retrieved after its storage")
 	}
 	// Cannot test property time - datastore changes its accuracy when storing it
 	if digest.HTML != testDigest.HTML ||
 		digest.RSS != testDigest.RSS {
-		t.Error("Digest should be equal before and after its storage")
+		t.Errorf("Digest should be equal before and after its storage")
 	}
 }
 
@@ -244,12 +243,12 @@ func TestGetTagContent(t *testing.T) {
 	testOuterTagContent := getTagContent(blob, "test")
 	outerTagContent := "----<inner>content</inner>-"
 	if testOuterTagContent != outerTagContent {
-		t.Error("Outer Tag Content should be " + outerTagContent + ", not " + testOuterTagContent)
+		t.Errorf("Outer Tag Content should be " + outerTagContent + ", not " + testOuterTagContent)
 	}
 	testInnerTagContent := getTagContent(blob, "inner")
 	innerTagContent := "content"
 	if testInnerTagContent != innerTagContent {
-		t.Error("Inner Tag Content should be " + innerTagContent + ", not " + testInnerTagContent)
+		t.Errorf("Inner Tag Content should be " + innerTagContent + ", not " + testInnerTagContent)
 	}
 }
 
@@ -263,27 +262,27 @@ func TestStoriesSortInterface(t *testing.T) {
 	stories := Stories{story0, story1, story2, story3, story4}
 	storiesLen := stories.Len()
 	if storiesLen != 5 {
-		t.Error("Stories Length should be 5, not " + strconv.Itoa(storiesLen))
+		t.Errorf("Stories Length should be 5, not %v", storiesLen)
 	}
 	for i := 0; i < storiesLen; i++ {
 		if stories.Less(i, i) {
-			t.Error("Story #" + strconv.Itoa(i) + " should not be below Story #" + strconv.Itoa(i))
+			t.Errorf("Story #%v should not be below itself", i)
 		}
 		for j := i + 1; j < storiesLen; j++ {
 			if !stories.Less(i, j) {
-				t.Error("Story #" + strconv.Itoa(j) + " should not be below Story #" + strconv.Itoa(i))
+				t.Errorf("Story #%v should not be below Story #%v", j, i)
 			}
 			if stories.Less(j, i) {
-				t.Error("Story #" + strconv.Itoa(i) + " should not be below Story #" + strconv.Itoa(j))
+				t.Errorf("Story #%v should not be below Story #%v", i, j)
 			}
 		}
 	}
 	stories.Swap(0, 1)
 	if stories[0] != story1 || stories[1] != story0 {
-		t.Error("Story #0 should have been swapped with Story #1")
+		t.Errorf("Story #0 should have been swapped with Story #1")
 	}
 	if stories[2] != story2 {
-		t.Error("Story #2 should be equal to itself")
+		t.Errorf("Story #2 should be equal to itself")
 	}
 }
 
