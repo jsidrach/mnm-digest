@@ -128,10 +128,10 @@ func handleRequest(t outputType) func(w http.ResponseWriter, r *http.Request) {
 		switch t {
 		case RSS:
 			w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
-			fmt.Fprintf(w, s.RSS)
+			fmt.Fprint(w, s.RSS)
 		default:
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprintf(w, s.HTML)
+			fmt.Fprint(w, s.HTML)
 		}
 	}
 }
