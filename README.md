@@ -1,4 +1,4 @@
-# Menéame Digest
+# Menéame Digest [Archived]
 Feed digest server for [meneame.net](https://meneame.net), a Spanish news aggregator - host your own server or subscribe to [meneame-diario.appspot.com/rss](https://meneame-diario.appspot.com/rss) for daily top ten menéame news stories
 
 Endpoints
