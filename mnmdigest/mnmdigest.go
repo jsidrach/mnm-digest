@@ -249,32 +249,44 @@ func filterNewStories(c context.Context, stories []Story) []Story {
 
 // Update/delete the past stories
 func updatePastStories(c context.Context) {
-	// Remove the stories whose UpdateToFlush is zero
-	// Decrease UpdatesToFlush for every story in past stories by one
 	var pastStories []Story
 	if _, err := datastore.NewQuery(STORY_KIND).GetAll(c, &pastStories); err != nil {
 		panic(err)
 	}
+	// Stories to update
+	var updatedStories = make([]Story, 0, config.MaxStories)
+	var updatedKeys = make([]*datastore.Key, 0, config.MaxStories)
+	// Stories to delete
+	var deletedKeys = make([]*datastore.Key, 0, config.MaxStories)
+	// Remove the stories whose UpdateToFlush is zero
+	// Decrease UpdatesToFlush for every story in past stories by one
 	for _, story := range pastStories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
 		if story.UpdatesToFlush <= 0 {
-			datastore.Delete(c, k)
+			deletedKeys = append(deletedKeys, k)
 		} else {
 			story.UpdatesToFlush -= 1
-			if _, err := datastore.Put(c, k, &story); err != nil {
-				panic(err)
-			}
+			updatedStories = append(updatedStories, story)
+			updatedKeys = append(updatedKeys, k)
 		}
+	}
+	if _, err := datastore.PutMulti(c, updatedKeys, updatedStories); err != nil {
+		panic(err)
+	}
+	if err := datastore.DeleteMulti(c, deletedKeys); err != nil {
+		panic(err)
 	}
 }
 
 // Store the stories into the datastore
 func storeStories(c context.Context, stories []Story) {
+	var keys = make([]*datastore.Key, 0, config.MaxStories)
 	for _, story := range stories {
 		k := datastore.NewKey(c, STORY_KIND, story.ID, 0, nil)
-		if _, err := datastore.Put(c, k, &story); err != nil {
-			panic(err)
-		}
+		keys = append(keys, k)
+	}
+	if _, err := datastore.PutMulti(c, keys, stories); err != nil {
+		panic(err)
 	}
 }
 
