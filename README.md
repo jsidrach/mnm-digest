@@ -24,7 +24,7 @@ Deployment in Google Cloud Platform
 
 * Install the [Google App Engine for Go](https://cloud.google.com/appengine/downloads)
 * Modify the application id setting the parameter ```application``` in ```app.yaml``` to your own application id
-* Execute ```./appcfg.py -A <application_id> update .``` inside the root directory of the repository
+* Execute ```goapp deploy``` inside the root directory of the repository
 
 Local Deployment
 ----------------
